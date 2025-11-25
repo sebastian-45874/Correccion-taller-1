@@ -1,89 +1,112 @@
-import java.util.*;
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
-public class GestorCine{
+public class Ventana {
+    private JPanel principal;
+    private JTabbedPane tabbedPane1;
+    private JList lstMostrar;
+    private JSpinner spnID;
+    private JTextField txtNombre;
+    private JTextField txtCategoria;
+    private JTextField txtCantidad;
+    private JButton EDITARPRODUCTOButton;
+    private JList lstDatosAlmacenados;
+    private JButton btnOrdenarProducto;
+    private JButton btnOrdenarID;
+    private JButton BUSCARPRODUCTOCONMAYORSTOCKButton;
+    private JButton btnDatosAlmacenados;
+    private JComboBox CboProducto;
 
-    public static final String PIRATAS = "Piratas";
-    public static final String NARUTO = "Naruto";
-    public static final String ANTMAN = "Antman";
+    InventarioProductos inventario = new InventarioProductos();
 
-    private static final int CAPACIDAD = 17;
-    private static final int PRECIO = 5;
-
-    private final Map<String, Queue<Compra>> colas = new HashMap<>();
-    private final Map<String, Integer> capacidad = new HashMap<>();
-    private final Map<String, Integer> vendidos = new HashMap<>();
-    private final Set<String> cedulasUsadas = new HashSet<>();
-    private int total = 0;
-
-    public GestorCine(){
-        colas.put(PIRATAS, new LinkedList<>());
-        colas.put(NARUTO, new LinkedList<>());
-        colas.put(ANTMAN, new LinkedList<>());
-        capacidad.put(PIRATAS, CAPACIDAD);
-        capacidad.put(NARUTO, CAPACIDAD);
-        capacidad.put(ANTMAN, CAPACIDAD);
-        vendidos.put(PIRATAS, 0);
-        vendidos.put(NARUTO, 0);
-        vendidos.put(ANTMAN, 0);
-    }
-
-    private String canon(String p){
-        if(p == null) return null;
-        if(p.equalsIgnoreCase("Piratas")) return PIRATAS;
-        if(p.equalsIgnoreCase("Naruto")) return NARUTO;
-        if(p.equalsIgnoreCase("Antman")) return ANTMAN;
-        return p;
-    }
-
-    private void validar(String p){
-        if(!colas.containsKey(p)) throw new RuntimeException("Película no encontrada: "+p);
-    }
-
-    public Compra registrarCompra(String pelicula, String cedula, int entradas){
-        String p = canon(pelicula);
-        validar(p);
-        if(cedula == null || cedula.isEmpty())throw new RuntimeException("Ingrese la cédula ");
-        if( entradas < 1) throw new RuntimeException("Debe comprar por lo menos una entrada ");
-        if(entradas > 5) throw new RuntimeException("No se puede comprar más de 5 entradas por persona ");
-        if(cedulasUsadas.contains(cedula))throw new RuntimeException("Esa cédula ya realizo una compra. Ingrese otra cédula");
-        int libres = capacidad.get(p);
-        if(entradas > libres)throw new RuntimeException("No hay capacidad suficiente en" + p + ". asientos libres: " +libres);
-        Compra c = new Compra(cedula, p, entradas);
-        colas.get(p).add(c);
-        capacidad.put(p, libres - entradas);
-        vendidos.put(p, vendidos.get(p) + entradas);
-        total += entradas * PRECIO;
-        cedulasUsadas.add(cedula);
-        return c;
-    }
-
-    public int getVendidos(String pelicula){
-        String p = canon(pelicula);
-        validar(p);
-        return vendidos.get(p);
-    }
-
-    public int getCapacidadRestantes(String pelicula){
-        String p = canon(pelicula);
-        validar(p);
-        return capacidad.get(p);
-    }
-
-    public int getTotal(){
-        return total;
-    }
-
-    public int totalPorPelicula(String pelicula){
-        String p = canon(pelicula);
-        validar(p);
-        return vendidos.get(p) * PRECIO;
-    }
-
-    public String historial(){
-        StringBuilder sb = new StringBuilder();
-        for(String p : new String[]{PIRATAS, NARUTO, ANTMAN}){
-            for(Compra c : colas.get(p)) sb.append(c.toString()).append("\n");
+    public void llenarListaMostrar() {
+        DefaultListModel dlm = new DefaultListModel();
+        for (Producto p : inventario.todos()) {
+            dlm.addElement(p.toString());
         }
-        return sb.toString();
+        lstMostrar.setModel(dlm);
+    }
+
+    public Ventana() {
+        llenarListaMostrar();
+
+        EDITARPRODUCTOButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int id = Integer.parseInt(spnID.getValue().toString());
+                Producto encontrado = inventario.buscarLinealPorId(id);
+                if (encontrado != null) {
+                    String nombre = txtNombre.getText();
+                    String categoria = txtCategoria.getText();
+                    int cantidad = Integer.parseInt(txtCantidad.getText());
+                    encontrado.setNombre(nombre);
+                    encontrado.setCategoria(categoria);
+                    encontrado.setCantidad(cantidad);
+                    JOptionPane.showMessageDialog(null, "Producto actualizado");
+                    llenarListaMostrar();
+                } else {
+                    JOptionPane.showMessageDialog(null, "No existe un producto con ese ID");
+                }
+            }
+        });
+
+        btnDatosAlmacenados.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                DefaultListModel dlm = new DefaultListModel();
+                for (Producto p : inventario.todos()) {
+                    dlm.addElement(p.toString());
+                }
+                lstDatosAlmacenados.setModel(dlm);
+            }
+        });
+
+        btnOrdenarProducto.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String categoria = CboProducto.getSelectedItem().toString();
+                DefaultListModel dlm = new DefaultListModel();
+                for (Producto p : inventario.ordenarPorCantidadCategoria(categoria)) {
+                    dlm.addElement(p.toString());
+                }
+                lstDatosAlmacenados.setModel(dlm);
+            }
+        });
+
+        btnOrdenarID.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                inventario.ordenarPorId();
+                DefaultListModel dlm = new DefaultListModel();
+                for (Producto p : inventario.todos()) {
+                    dlm.addElement(p.toString());
+                }
+                lstDatosAlmacenados.setModel(dlm);
+            }
+        });
+
+        BUSCARPRODUCTOCONMAYORSTOCKButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Producto mayor = inventario.buscarMayorCantidad();
+                if (mayor != null) {
+                    DefaultListModel dlm = new DefaultListModel();
+                    dlm.addElement(mayor.toString());
+                    lstDatosAlmacenados.setModel(dlm);
+                    JOptionPane.showMessageDialog(null, "Producto con mayor stock encontrado");
+                } else {
+                    JOptionPane.showMessageDialog(null, "No hay productos en el inventario");
+                }
+            }
+        });
+    }
+
+    public static void main(String[] args) {
+        JFrame frame = new JFrame();
+        frame.setContentPane(new Ventana().principal);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.pack();
+        frame.setVisible(true);
     }
 }
